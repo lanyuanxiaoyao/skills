@@ -3,28 +3,20 @@ name: lyxy-document-reader
 description: 统一文档解析工具 - 将 DOCX、XLS、XLSX、PPTX、PDF、HTML/URL 转换为 Markdown。支持全文输出、字数统计、行数统计、标题提取、章节提取、正则搜索。当用户要求"读取/解析/打开文档"、上传 .docx/.xls/.xlsx/.pptx/.pdf/.html 文件、或提供 URL 时使用。
 license: MIT
 metadata:
-  version: "20260318_221005"
+  version: "20260318_225525"
   author: "lanyuanxiaoyao <lanyuanxiaoyao@gmail.com>"
-compatibility: Requires Python 3.11+。优先使用 lyxy-runner-python skill，次选 uv run --with，降级到主机 Python。
+compatibility: Requires Python 3.11+。脚本自启动，自动检测依赖并使用 uv 执行。
 ---
 
 # 统一文档解析 Skill
 
-## 🔴 重要：执行路径优先级（必须遵守）
+## 推荐用法
 
-### 执行路径选择（按优先级顺序）
-1. **lyxy-runner-python skill（首选）** - 自动管理依赖
-2. **python scripts/lyxy_document_reader.py** - 自启动，自动检测依赖
-3. **uv run --with** - 手动指定依赖
-4. **主机 Python + pip install** - 手动安装依赖
+直接运行脚本即可，它会自动检测文件类型、当前平台，并用正确的 uv 命令执行：
 
-### 推荐用法
 ```bash
-# 直接运行（自动检测依赖并执行）
 python scripts/lyxy_document_reader.py <文件路径或URL>
 ```
-
-脚本会自动检测文件类型、当前平台，并用正确的 uv 命令执行。
 
 ## Purpose
 
