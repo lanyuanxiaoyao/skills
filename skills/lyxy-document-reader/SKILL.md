@@ -1,9 +1,9 @@
 ---
 name: lyxy-document-reader
-description: 统一文档解析工具 - 将 DOCX、XLS、XLSX、PPTX、PDF、HTML/URL 转换为 Markdown。支持全文输出、字数统计、行数统计、标题提取、章节提取、正则搜索。当用户要求"读取/解析/打开文档"、上传 .docx/.xls/.xlsx/.pptx/.pdf/.html 文件、或提供 URL 时使用。
+description: 统一文档解析工具 - 将 DOC、DOCX、XLS、XLSX、PPT、PPTX、PDF、HTML/URL 转换为 Markdown。支持全文输出、字数统计、行数统计、标题提取、章节提取、正则搜索。当用户要求"读取/解析/打开文档"、上传 .doc/.docx/.xls/.xlsx/.ppt/.pptx/.pdf/.html 文件、或提供 URL 时使用。
 license: MIT
 metadata:
-  version: "20260316_092127"
+  version: "20260318_093821"
   author: "lanyuanxiaoyao <lanyuanxiaoyao@gmail.com>"
 compatibility: Requires Python 3.11+。优先使用 lyxy-runner-python skill，次选 uv run --with，降级到主机 Python。
 ---
@@ -29,9 +29,11 @@ python scripts/lyxy_document_reader.py <文件路径或URL>
 ## Purpose
 
 **支持格式**
+- DOC（Word 旧格式）
 - DOCX（Word 文档）
 - XLS（Excel 旧格式）
 - XLSX（Excel 表格）
+- PPT（PowerPoint 旧格式）
 - PPTX（PowerPoint 演示文稿）
 - PDF（PDF 文档，支持 OCR）
 - HTML / URL（网页内容）
@@ -47,8 +49,8 @@ python scripts/lyxy_document_reader.py <文件路径或URL>
 
 ### 触发词
 - 中文："读取/解析/打开 文档/Word/Excel/PPT/PDF/网页"
-- 英文："read/parse/extract document/docx/xls/xlsx/pptx/pdf/html"
-- 文件扩展名：`.docx`、`.xls`、`.xlsx`、`.pptx`、`.pdf`、`.html`、`.htm`
+- 英文："read/parse/extract document/doc/docx/xls/xlsx/ppt/pptx/pdf/html"
+- 文件扩展名：`.doc`、`.docx`、`.xls`、`.xlsx`、`.ppt`、`.pptx`、`.pdf`、`.html`、`.htm`
 - URL：`http://`、`https://`
 
 ## Quick Reference
