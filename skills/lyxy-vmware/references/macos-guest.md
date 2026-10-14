@@ -1,15 +1,22 @@
 # macOS 黑苹果客户机经验
 
-> 单源是 SKILL.md，本文与其不一致时以 SKILL.md 为准。来源：macOS（OpenCore/OC4VM 方案）虚拟机实证。是否黑苹果、具体引导方案查记忆卡。
+> 单源是 SKILL.md，本文与其不一致时以 SKILL.md 为准。来源：macOS（OpenCore/OC4VM 方案）虚拟机实证。是否黑苹果、具体引导方案按任务信息确认。
 
 ## 方案约束（先记住再动手）
 
-- **若为 OpenCore/OC4VM 黑苹果方案**（用户的 macOS VM 均是）：**绝对不要点系统大版本升级**——会毁引导；系统自动更新应全关。opencore.vmdk 是引导设备，勿从 VM 移除；macOS 启动后 OpenCore 卷可弹出，重启自动回挂，属正常。
-- 快照回滚用 `vmrun revertToSnapshot <vmx> <快照名>`（快照名查记忆库实体卡；快照拍摄注意见 references/vmrun.md）。
+- **若为 OpenCore/OC4VM 黑苹果方案**：**绝对不要点系统大版本升级**——会毁引导；系统自动更新应全关。opencore.vmdk 是引导设备，勿从 VM 移除；macOS 启动后 OpenCore 卷可弹出，重启自动回挂，属正常。
+- 快照回滚用 `vmrun revertToSnapshot <vmx> <快照名>`（快照名按任务信息确定；快照拍摄注意见 references/vmrun.md）。
+
+## 方案客观局限（macOS on VMware 通用）
+
+- 无 GPU 3D/Metal 加速，UI 全软件渲染，卡顿：适合开发/功能测试，不适合体验流畅度。
+- Apple ID / iMessage / FaceTime 登录不稳。
+- 系统大版本更新可能搞挂 VM：更新前务必拍快照（黑苹果更应直接不点更新）。
+- Windows x86 宿主机只能跑 x64 macOS；ARM64 macOS 无法在 x86 宿主上虚拟。
 
 ## 首要通道
 
-SSH 免密（宿主机密钥已入 authorized_keys）。交互式 GUI 操作走 VNC（地址/端口/密码查记忆卡），不用 VNC 截图验证——直接 SSH 跑批量命令。
+SSH 免密（宿主机密钥已入 authorized_keys）。交互式 GUI 操作走 VNC（地址/端口/密码向用户索取），不用 VNC 截图验证——直接 SSH 跑批量命令。
 
 ## vmrun 在 macOS guest 上的能力边界
 
@@ -37,5 +44,5 @@ macOS 没有 open-vm-tools 时用 VMware 官方 darwin.iso：若 OpenCore 卷自
 
 ## 环境注意
 
-- sudo 是否免密、MacPorts/Homebrew 等包管理器细节是机器事实，查记忆卡；通用规律：非交互 ssh 不继承登录 shell 的 PATH，调包管理器用全路径。
+- sudo 是否免密、MacPorts/Homebrew 等包管理器细节是机器事实，向用户确认；通用规律：非交互 ssh 不继承登录 shell 的 PATH，调包管理器用全路径。
 - 系统卷密封（SSV），/System/Applications 不可删也不占多少空间，别做系统精简的尝试。

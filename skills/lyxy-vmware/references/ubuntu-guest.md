@@ -4,7 +4,7 @@
 
 ## 首要通道
 
-SSH 免密（宿主机密钥已入 authorized_keys，地址见记忆库实体卡）。网络坏了才用 `vmrun runScriptInGuest` 救急（配方见 references/vmrun.md）。
+SSH 免密（宿主机密钥已入 authorized_keys，地址按任务信息确定）。网络坏了才用 `vmrun runScriptInGuest` 救急（配方见 references/vmrun.md）。
 
 ## 克隆机网络不通（历史大坑）
 
@@ -20,7 +20,7 @@ SSH 免密（宿主机密钥已入 authorized_keys，地址见记忆库实体卡
 
 ## 母机模板化清单（达到"克隆即用"的标准）
 
-用户现有 Ubuntu 母机已按此清单处理（处理记录、各自基准快照名查记忆卡）。制作新母机时照此办理：
+母机按此清单处理后即达"克隆即用"（各母机的处理状态与基准快照名向用户确认）。制作新母机时照此办理：
 
 - netplan 改为按接口名 `ens33: {dhcp4: true, dhcp6: true}`（原文件留 `.bak`）；
 - `/etc/cloud/cloud.cfg.d/99-disable-network-config.cfg` 写入 `network: {config: disabled}`，防 cloud-init 重写回绑定式配置；
@@ -34,15 +34,17 @@ SSH 免密（宿主机密钥已入 authorized_keys，地址见记忆库实体卡
 ## 克隆后首开机检查项
 
 1. `ip a` 看 ens33 是否 UP 且拿到 DHCP 地址；
-2. 免密 SSH 是否可入（模板化母机已预置宿主机公钥）；
+2. 免密 SSH 是否可入（模板化母机已预置宿主机公钥）；克隆机 host key 是新生成的，首连用 `StrictHostKeyChecking=accept-new`，勿手动清 known_hosts；
 3. machine-id / host key 是否独立（`cat /etc/machine-id` 与母机不同）；
-4. 主机名与母机不同（母机模板 hostname 固定，克隆后手动改）。需要改名时：`echo <pw> | sudo -S hostnamectl set-hostname <新名>`（密码查记忆卡，卡内无则向用户索取）。
+4. 主机名与母机不同（母机模板 hostname 固定，克隆后手动改）。需要改名时：`echo <pw> | sudo -S hostnamectl set-hostname <新名>`（密码向用户索取）。
 
 ## apt 与包管理
 
 - apt 源走清华 TUNA（国内网络环境；原 sg.archive/archive 极慢，apt update 可卡死）。换源改 `/etc/apt/sources.list.d/ubuntu.sources`（deb822 格式），原文件留 `.bak`。
 - `unattended-upgrades` 会占 dpkg 锁：装包前先 `systemctl stop unattended-upgrades`，否则 apt 报锁被占。
 - snap CLI 输出语言跟随系统 locale（中文系统输出"已禁用"之类），`LC_ALL=C` 无效；匹配输出用 `awk 'NR>1 && $NF ~ /disabled|禁用/'` 这类双语模式。
+- VM 内 GitHub 直连大传输（clone 大仓库）可能被墙中断（如 `GnuTLS recv error`）：先重试；仍失败用 blob 过滤（`git clone --filter=blob:none`）减小传输量，或改走代理镜像兜底。
+- Docker 镜像 pull 被墙（EOF/超时）：配国内 registry 镜像加速，ghcr 的镜像找国内镜像源回退重跑。
 
 ## systemd 与服务判断
 
@@ -54,3 +56,14 @@ SSH 免密（宿主机密钥已入 authorized_keys，地址见记忆库实体卡
 - `sshpass` + Git Bash ssh 传密码会报 `Failed password`（密码正确也失败）：自动化一律用密钥或 vmrun 通道，不走 sshpass。
 - `pkill -f` 在 ssh 远程命令里会误杀自身 shell（命令行含同样字符串）：改用 `pkill -x`。
 - `echo <pw> | sudo -S` 与传脚本（heredoc/`bash -s`）不能共用 stdin：先上传脚本文件，再 `echo <pw> | sudo -S bash /tmp/x.sh`。
+
+## 常驻 daemon 与进程管理（SSH 远程后台）
+
+- 常驻 daemon 配方：`(sleep N) > in.fifo 2>/dev/null &` 持 fifo 写端保活 + `nohup daemon < in.fifo > events.log 2> debug.log &`；ssh 远端后台进程必须重定向全部 fd，否则 ssh 会话挂住不返回；`echo json > in.fifo` 即时下发命令。
+- **进程名 15 字符截断**：`pkill`/`pgrep -x` 按进程名匹配，超过 15 字符的名字（如带 `-linux-amd64` 后缀的长名）匹配不到。判别：`pgrep -af` 按全命令行匹配，或按 PID kill。
+- 事件验证捷径：让被测进程把事件落盘日志，验证时直接看日志，与人工操作互为印证。
+
+## 桌面 GUI / dbus 验证
+
+- `busctl` 调 dbusmenu：负数参数会被当选项，加 `--` 分隔。布局树：`busctl --user call <SNI 总线名> /StatusNotifierMenu com.canonical.dbusmenu GetLayout -- iias 0 -1 0`；模拟点击：`... Event -- isvu <dbusID> clicked s "" 0`（dbusID 为 buildMenu 跨层级顺序分配，0 为根；SNI 即 StatusNotifierItem 托盘协议）。
+- Wayland 桌面会话拒绝一切跨会话截图（SSH 无 `DISPLAY`/`WAYLAND_DISPLAY`；`vmrun captureScreen` 也可能因 Tools 会话状态被拒）。gnome-screenshot、Shell D-Bus、grim 全失败时果断放弃截图验证，改走应用事件日志或用户目视。

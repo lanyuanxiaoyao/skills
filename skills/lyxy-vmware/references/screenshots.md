@@ -42,6 +42,14 @@ vmshot() {  # 用法: vmshot <vmx路径> <宿主机输出.png> <guest用户> <gu
 
 结论：截图一律走 `captureScreen`，不要尝试 guest 内截图。
 
+### Wayland 桌面 guest 全通道被拒的兜底
+
+判断方法：Wayland 会话的桌面 guest，`vmrun captureScreen`、SSH 内 gnome-screenshot、Shell D-Bus 截图接口、grim 全部试过仍失败（各报各的权限/会话错误），即判定该 guest 无法自动截图验证。此时果断放弃截图，改走：
+
+- 应用自身的事件/日志输出落盘核对；
+- VNC 打字通道让用户目视确认；
+- 如实向用户报告「窗口无法自动验证」，勿反复撞墙。
+
 ## captureScreen 的局限与替代
 
 - 截的是 VM 虚拟屏幕：macOS 需先关自动锁屏（屏保锁定后截到的是锁屏界面）。
