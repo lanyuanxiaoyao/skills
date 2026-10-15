@@ -3,7 +3,7 @@ name: lyxy-vmware
 description: 操作 VMware Workstation 虚拟机的标准作业规则：动手前先认机（vmx/IP/凭据/快照名从任务信息或用户处获取），再按通道选择表选 SSH/vmrun/captureScreen/VNC 通道操作，核心坑是 Git Bash 必须 MSYS_NO_PATHCONV=1、vmrun 用全路径且参数位置有讲究、guest 内输出不回显要落盘拉回；禁止写死 IP、禁止凭据落盘；凡是"操作 VMware""连虚拟机""vmrun""虚拟机截图""克隆虚拟机""快照回滚""在虚拟机里执行命令""虚拟机 GUI 自动化验证"这类需求，都按本规则执行。
 metadata:
   author: lanyuanxiaoyao
-  version: 1.2.0
+  version: 1.3.0
 ---
 
 # 操作 VMware Workstation 虚拟机
@@ -57,6 +57,8 @@ metadata:
 | 路径含中文时 Git Bash 下 vmrun"假成功"（exit 0 没建成） | 一律改用 PowerShell 调用 |
 | 手改 vmx 后开机失败、中文值变 `?` | vmx 是 UTF-8 无 BOM，以 UTF-8 无 BOM 回写，文件名引用按目录内实际文件名写 |
 | 跨进程窗口枚举/UIA 找不到 GUI 窗口 | 可见性由启动通道决定（详见 windows-guest.md）；跨通道只能真实输入 + 人工目视 |
+| vmrun start 报成功但 VM 未启动 | 以 `vmrun list` 复核；未起则重跑 |
+| vmrun 报错只走 stderr | 合并 `2>&1` 或按退出码判成败，勿丢 stderr 后按 stdout 关键字判错 |
 
 ## 细则加载（按需 Read 本技能目录下 references/）
 

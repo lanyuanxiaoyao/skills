@@ -34,9 +34,15 @@ SSH 免密（宿主机密钥已入 authorized_keys，地址按任务信息确定
 ## 克隆后首开机检查项
 
 1. `ip a` 看 ens33 是否 UP 且拿到 DHCP 地址；
-2. 免密 SSH 是否可入（模板化母机已预置宿主机公钥）；克隆机 host key 是新生成的，首连用 `StrictHostKeyChecking=accept-new`，勿手动清 known_hosts；
+2. 免密 SSH 是否可入（模板化母机已预置宿主机公钥）。克隆机 host key 是新生成的，首连用 `StrictHostKeyChecking=accept-new`；若该 IP 此前被其他 VM 用过、known_hosts 残留旧 key，accept-new 会拒连，先 `ssh-keygen -R <IP>` 清除；
 3. machine-id / host key 是否独立（`cat /etc/machine-id` 与母机不同）；
 4. 主机名与母机不同（母机模板 hostname 固定，克隆后手动改）。需要改名时：`echo <pw> | sudo -S hostnamectl set-hostname <新名>`（密码向用户索取）。
+
+## 切换静态 IP
+
+- 静态 IP 取 NAT 网段低段，避让 DHCP 池（VMnet8 默认 `.128–.254`）。
+- 改网络的脚本放整个流程最后一步，并用 `nohup` 执行，防 SSH 断连打断配置。
+- 切换后验证：新 IP 可达、SSH 可入；宿主机 known_hosts 见上条清理规则。
 
 ## apt 与包管理
 

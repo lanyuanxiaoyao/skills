@@ -38,6 +38,7 @@ MSYS_NO_PATHCONV=1 "$VMRUN" -T ws start "<新vmx>" nogui
 - 克隆方式按需选择：`linked` 省磁盘空间、秒级完成，但克隆机依赖母盘文件存在（母盘勿删/勿移）；需要独立分发的机器用 `full`。
 - 克隆机命名：按用途起 5 字左右短名（如「绘图测试」），同日多台加序号；用户有指定以用户为准。
 - 克隆后调整内存/CPU 时手改 vmx，编码与写法坑见下文「手改 vmx 的编码与写法」。
+- 多台克隆机协同（跨机 TLS、证书校验、分布式组件）前先核各机时钟 `date -u`：克隆机时钟可能漂移数分钟，chrony 无可达源时实际未同步，证书校验会报 not yet valid。
 
 - **⚠️ Git Bash 下 vmrun 传中文目标路径会"假成功"**：exit 0、母机 .vmsd 也登记了，但目标 vmx 根本没创建。凡路径含中文，一律改用 PowerShell 调用：
   `powershell -NoProfile -Command "& '<vmrun全路径>' clone '<源vmx>' '<目标vmx>' linked -snapshot=<快照名>"`
@@ -61,11 +62,16 @@ MSYS_NO_PATHCONV=1 "$VMRUN" -gu u -gp p runScriptInGuest <vmx> /bin/bash "/tmp/x
 MSYS_NO_PATHCONV=1 "$VMRUN" -gu u -gp p CopyFileFromGuestToHost <vmx> /tmp/x.log ./x.log
 ```
 
-### Tools 就绪探针
+### 就绪判断与 Tools 探针
 
-开机后 VMware Tools 完全就绪需数分钟（本机实测 1–6 分钟），`checkToolsState` 可能长期停在 `installed`，不能作为就绪依据。就绪判据：`fileExistsInGuest`（如探测 `/etc/passwd`）轮询成功即 Tools 可用。
+开机后 VMware Tools 完全就绪需数分钟（本机实测 1–6 分钟），`checkToolsState` 可能长期停在 `installed`，不能作为就绪依据。就绪判断优先级（免凭据通道优先）：
 
-- 开机 6 分钟仍取不到 IP、但系统已到登录界面（`captureScreen` 可见），属 Tools 初始化偏慢，继续等待，勿误判故障、勿反复重启。
+1. `getGuestIPAddress` 返回 IP = 系统已启动（不依赖 guest 凭据）；
+2. 免密 SSH 可入 = 完全就绪；
+3. `fileExistsInGuest` 探针（如探测 `/etc/passwd`）仅在已带凭据时使用。
+
+- guest 操作类命令（runScriptInGuest/CopyFile*/captureScreen 等）必须带 `-gu/-gp`，否则持续报「Command requires valid user name and password for the guest OS」——动手前确认凭据在手，没有先向用户索取，勿无凭据盲等轮询。
+- 开机 6 分钟仍取不到 IP、但 `captureScreen` 可见登录界面，属 Tools 初始化偏慢，继续等待，勿误判故障、勿反复重启。
 - Tools 未就绪又需 IP 时，查宿主机 NAT DHCP 租约文件 `C:\ProgramData\VMware\vmnetdhcp.leases`（按 MAC/时间取最新租约）。
 
 ### getGuestIPAddress 输出要过滤
@@ -75,6 +81,14 @@ MSYS_NO_PATHCONV=1 "$VMRUN" -gu u -gp p CopyFileFromGuestToHost <vmx> /tmp/x.log
 ```bash
 ip=$(MSYS_NO_PATHCONV=1 "$VMRUN" getGuestIPAddress <vmx> 2>/dev/null | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}')
 ```
+
+### stderr 与退出码
+
+vmrun 的报错走 stderr。脚本判成败必须合并 `2>&1` 捕获或直接看退出码（PowerShell 用 `$LASTEXITCODE`），禁止丢弃 stderr 后按 stdout 关键字判错——曾因此把无凭据报错误读成「未就绪」，白轮询 10 分钟。
+
+### start 可能假成功
+
+`vmrun start <vmx> nogui` 可能 exit 0 但 VM 实际未启动（`vmrun list` 无、ping 不通）。启动后用 `vmrun list` 复核，未起则重跑。
 
 ### 快照尽量关机拍
 
