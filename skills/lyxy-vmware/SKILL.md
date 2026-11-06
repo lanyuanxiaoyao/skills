@@ -3,7 +3,7 @@ name: lyxy-vmware
 description: 操作 VMware Workstation 虚拟机的标准作业规则：动手前先认机（vmx/IP/凭据/快照名从任务信息或用户处获取），再按通道选择表选 SSH/vmrun/captureScreen/VNC 通道操作，核心坑是 Git Bash 必须 MSYS_NO_PATHCONV=1、vmrun 用全路径且参数位置有讲究、guest 内输出不回显要落盘拉回；禁止写死 IP、禁止凭据落盘；凡是"操作 VMware""连虚拟机""vmrun""虚拟机截图""克隆虚拟机""快照回滚""在虚拟机里执行命令""虚拟机 GUI 自动化验证"这类需求，都按本规则执行。
 metadata:
   author: lanyuanxiaoyao
-  version: 1.3.0
+  version: 1.6.0
 ---
 
 # 操作 VMware Workstation 虚拟机
@@ -49,11 +49,12 @@ metadata:
 | vmrun 吞掉以 `-` 开头的程序参数 | 参数写进 .bat/.sh 文件，包装执行 |
 | `runScriptInGuest` 不回显 stdout | guest 内落盘日志，`CopyFileFromGuestToHost` 拉回 |
 | Linux guest `/tmp` 是 tmpfs，重启即丢 | vmrun 流程每次先上传脚本再执行 |
-| 运行中拍快照报 VIX_E_INVALID_ARG | 快照尽量在关机后拍 |
+| 运行中拍快照报 VIX_E_INVALID_ARG 或快照后 guest 冻结失联 | 快照安排在关机后拍；冻结不恢复用 `vmrun reset` 重启（先确认） |
 | `getGuestIPAddress` 输出带错误文本 | 正则提取 IPv4，勿整行当 IP 用 |
 | ssh 远程命令里 `pkill -f` 误杀自身 shell | 改用 `pkill -x` |
 | 传密码与传脚本共用 stdin 互相吃掉 | `echo <pw> \| sudo -S` 与脚本上传分两步 |
 | vmrun 克隆/直启的 VM 不进 GUI 库 | `vmware.exe <vmx>` 登记入库（中文路径用 PowerShell）；删除/移除默认交用户手动，**严禁杀 vmware.exe** |
+| 克隆机入库后 GUI 显示"Clone of 母机名" | 克隆完、入库前把新 vmx 的 `displayName` 改成新名（与目录名一致），详见 vmrun.md 克隆小节 |
 | 路径含中文时 Git Bash 下 vmrun"假成功"（exit 0 没建成） | 一律改用 PowerShell 调用 |
 | 手改 vmx 后开机失败、中文值变 `?` | vmx 是 UTF-8 无 BOM，以 UTF-8 无 BOM 回写，文件名引用按目录内实际文件名写 |
 | 跨进程窗口枚举/UIA 找不到 GUI 窗口 | 可见性由启动通道决定（详见 windows-guest.md）；跨通道只能真实输入 + 人工目视 |
@@ -64,7 +65,7 @@ metadata:
 
 | 场景 | 文件 |
 |---|---|
-| vmrun 命令配方、参数位置、Tools 探针、高负载救急模式、克隆入库 | references/vmrun.md |
+| vmrun 命令配方与实证怪癖（克隆入库、快照、vmx 手改、网卡吞吐、宿主机网络打通、多机起停） | references/vmrun.md |
 | 截图（captureScreen / VNC / guest 内方案） | references/screenshots.md |
 | Ubuntu 客户机（克隆修复、apt、systemd 陷阱） | references/ubuntu-guest.md |
 | macOS 黑苹果客户机（OC4VM、TCC、vncdotool） | references/macos-guest.md |

@@ -14,8 +14,7 @@
 - vmrun guest 直跑**复合命令**（`cmd.exe /c "a & b"`、含重定向）会失败，单命令可用——复杂逻辑在宿主机写好 `.bat` 传进去再执行。
 - GUI 程序启动：`runProgramInGuest -interactive -noWait <vmx> C:\path\app.exe`，不带 `-noWait` 会等进程退出而挂起。
 - 单实例应用（Electron 等）有残留进程时，新实例弹不出窗口：先杀干净旧进程再启动。
-- 高负载 VM（CPU 100%、内存 96%）下：`listProcessesInGuest`/`tasklist` 会超时挂起；复杂 cmd 链（`&` + `2>&1` + 管道）会永久挂起。可靠模式：`-noWait` 发简单命令（单一重定向）+ 轮询 `fileExistsInGuest` 标志文件。
-- 文件通道稳定但慢（本机实测约 0.5MB/s），大文件走 scp。
+- 高负载 VM（CPU 100%、内存 96%）下：`listProcessesInGuest`/`tasklist` 会超时挂起；复杂 cmd 链（`&` + `2>&1` + 管道）会永久挂起。可靠模式见 references/vmrun.md「高负载 Windows 的可靠模式」。
 
 ## GUI 自动化
 

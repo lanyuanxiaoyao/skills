@@ -4,7 +4,7 @@
 
 ## 基本约定
 
-- 先定位 vmrun（方法见 SKILL.md 核心规则），本文 `$VMRUN` 指代；`vmware.exe`（GUI 主程序）在同级目录。
+- 先定位 vmrun（方法见 SKILL.md 核心规则），本文 `$VMRUN` 指代。
 - 涉及 guest 路径的命令在 Git Bash 必须前缀 `MSYS_NO_PATHCONV=1`（PowerShell/CMD 不需要）；Windows 客户机路径一律反斜杠（`C:\...`），正斜杠报"文件名无效"。
 - 命令名**大小写敏感**：`CopyFileFromHostToGuest` / `CopyFileFromGuestToHost` / `runScriptInGuest` / `runProgramInGuest` / `getGuestIPAddress` / `fileExistsInGuest` / `listDirectoryInGuest`。
 - 参数位置：凭据 `-gu <用户> -gp <密码>` 放在**子命令之前**；`-noWait` 放在 vmx 之后、程序路径之前。
@@ -32,10 +32,12 @@
 
 ```bash
 MSYS_NO_PATHCONV=1 "$VMRUN" clone "<母机vmx>" "<新目录>\新名.vmx" linked -snapshot=<基准快照名>
+# 克隆后：改 displayName 为新名，再开机/登记
 MSYS_NO_PATHCONV=1 "$VMRUN" -T ws start "<新vmx>" nogui
 ```
 
 - 克隆方式按需选择：`linked` 省磁盘空间、秒级完成，但克隆机依赖母盘文件存在（母盘勿删/勿移）；需要独立分发的机器用 `full`。
+- **克隆后必改 `displayName`**：clone 默认写 `"Clone of <母机名>"`，GUI 库显示它。关机时改新 vmx 的 `displayName = "新名"`（与目录名一致），再登记入库；勿用 `writeVariable`（不刷新 GUI），编码坑见「手改 vmx」。
 - 克隆机命名：按用途起 5 字左右短名（如「绘图测试」），同日多台加序号；用户有指定以用户为准。
 - 克隆后调整内存/CPU 时手改 vmx，编码与写法坑见下文「手改 vmx 的编码与写法」。
 - 多台克隆机协同（跨机 TLS、证书校验、分布式组件）前先核各机时钟 `date -u`：克隆机时钟可能漂移数分钟，chrony 无可达源时实际未同步，证书校验会报 not yet valid。
@@ -49,12 +51,18 @@ MSYS_NO_PATHCONV=1 "$VMRUN" -T ws start "<新vmx>" nogui
 - vmrest REST API（若宿主机启用：127.0.0.1:8697，凭据向用户索取）对库存登记/移除无效，仅在做 REST 电源/快照操作时才需要启动它。
 - 母机 .vmsd 里残留已删克隆的 clone 登记属无害元数据，无需清理。
 
+### 虚拟网卡型号是 VM 间吞吐天花板
+
+- 判据：VM 间 TCP 吞吐异常低（本机实测被压至 ~33Mbps）+ 重传上千 + 端侧 CPU 空闲 → 先查网卡型号，勿先调存储/内核参数。
+- 旧式仿真网卡（如 pcnet32）封顶吞吐。关机后在 vmx 给网卡补 `ethernet0.virtualDev = "vmxnet3"` 行换半虚拟化网卡（克隆出的 vmx 常缺该行，直接补行）；换后实测 5Gbps 量级。运行态改 vmx 会被回写覆盖，必须关机改。
+- 换卡可能改接口名：网络配置按 MAC 钉名（netplan 配方见 references/ubuntu-guest.md）；修复态重拍快照固化——快照回滚会连带回滚 vmx 设备配置与 PCI slot，旧复位点里的坏网卡会被复活。
+
 ### stdout 不回显，输出落盘拉回
 
 `runScriptInGuest` / `runProgramInGuest` 不回显 stdout。可靠模式：脚本内先重定向落盘，跑完拉回。
 
 ```bash
-# 1) 上传脚本（/tmp 是 tmpfs，重启即丢，每次 vmrun 流程都要重新上传）
+# 1) 上传脚本（每次流程都要重新上传）
 MSYS_NO_PATHCONV=1 "$VMRUN" -gu u -gp p CopyFileFromHostToGuest <vmx> ./x.sh /tmp/x.sh
 # 2) 执行（脚本内部 exec >>/tmp/x.log 2>&1）
 MSYS_NO_PATHCONV=1 "$VMRUN" -gu u -gp p runScriptInGuest <vmx> /bin/bash "/tmp/x.sh"
@@ -84,7 +92,7 @@ ip=$(MSYS_NO_PATHCONV=1 "$VMRUN" getGuestIPAddress <vmx> 2>/dev/null | grep -oE 
 
 ### stderr 与退出码
 
-vmrun 的报错走 stderr。脚本判成败必须合并 `2>&1` 捕获或直接看退出码（PowerShell 用 `$LASTEXITCODE`），禁止丢弃 stderr 后按 stdout 关键字判错——曾因此把无凭据报错误读成「未就绪」，白轮询 10 分钟。
+vmrun 的报错走 stderr。脚本判成败必须合并 `2>&1` 捕获或直接看退出码（PowerShell 用 `$LASTEXITCODE`），禁止丢弃 stderr 后按 stdout 关键字判错。
 
 ### start 可能假成功
 
@@ -92,18 +100,19 @@ vmrun 的报错走 stderr。脚本判成败必须合并 `2>&1` 捕获或直接�
 
 ### 快照尽量关机拍
 
-运行中的 VM 上执行 `vmrun snapshot` 曾实测报 `VIX_E_INVALID_ARG`，Workstation 对运行中 VM 的 vmrun 快照支持不稳定（GUI 手动拍一般可行）。稳妥流程：`stop soft` → 确认关机 → `snapshot`。
+运行中的 VM 上执行 `vmrun snapshot` 曾实测报 `VIX_E_INVALID_ARG`，Workstation 对运行中 VM 的 vmrun 快照支持不稳定（GUI 手动拍一般可行）。另一症状：快照拍成功但 **guest 被冻结**——kubelet 失联、内核卡死、guest 完全无响应，`vmrun reset` 重启可恢复（丢运行态，reset 属不可逆，先确认）。稳妥流程：`stop soft` → 确认关机 → `snapshot`。
 
 ### 手改 vmx 的编码与写法
 
 - vmx 是 UTF-8 无 BOM 文本。以 ASCII/ANSI 回写会把中文值（displayName 等）写成 `?`，连带 nvram/vmxf/vmdk 索引等引用一起损坏，开机被取消。
 - 手改规则：只改目标行值，值必须合法；文件名引用（nvram/vmxf/vmdk）按目录内实际文件名写。
+- 安全改法：优先 edit 工具精确替换单行；脚本批量改时字节级读写（Latin-1 读入 → 只替换 ASCII 模式串 → UTF-8 无 BOM 写回），勿整文件重编码；改前留 `.bak` 可秒级回滚。
 - 改坏了的修复：以 UTF-8 无 BOM 重写整个 vmx，按实际文件名核对全部引用，可完全恢复。
 - 改 vmx（如临时加 VNC 两行）在关机时做。
 
 ### 以 `-` 开头的程序参数会被 vmrun 吞掉
 
-`runProgramInGuest` 传 `powershell -NoProfile -File ...` 时，`-NoProfile` 等被 vmrun 当自身选项吃掉，导致脚本不执行或半执行（带 `-noWait` 时甚至完全不执行且 exit 0）。绕过：把带 `-` 的参数写进 `.bat`（Windows）或 `.sh`（Linux/macOS）文件，用 `cmd.exe /c` 或 `/bin/bash` 包装执行。关键验证用 `Start-Process` 的 bat 包装保证 argv 干净（vmrun 直启 exe 曾观察到空参/无参两种行为）。
+`runProgramInGuest` 传 `powershell -NoProfile -File ...` 时，`-NoProfile` 等被 vmrun 当自身选项吃掉，导致脚本不执行或半执行（带 `-noWait` 时甚至完全不执行且 exit 0）。绕过：把带 `-` 的参数写进 `.bat`（Windows）或 `.sh`（Linux/macOS）文件，用 `cmd.exe /c` 或 `/bin/bash` 包装执行。vmrun 直启 exe 有丢参风险，关键验证一律走 bat 包装保证 argv 干净。
 
 ### 高负载 Windows 的可靠模式
 
@@ -132,6 +141,5 @@ netsh advfirewall firewall add rule name="<描述性名称>" dir=in action=allow
 ### 其他
 
 - 文件通道稳定但慢：本机实测约 0.5MB/s（376MB 约 12 分钟）。大文件优先 scp/SSH 通道。
-- `runProgramInGuest` 启动 GUI 程序必须带 `-interactive -noWait`，否则等进程退出而挂起。
 - sudo 密码与脚本 stdin 分离：`echo <pw> | sudo -S bash /tmp/x.sh`（脚本先上传到 /tmp，不走 stdin）。
 - macOS 客户机上 `CopyFileFromGuestToHost` 不可用，见 references/macos-guest.md。

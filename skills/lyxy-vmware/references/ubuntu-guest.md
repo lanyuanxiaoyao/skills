@@ -6,7 +6,7 @@
 
 SSH 免密（宿主机密钥已入 authorized_keys，地址按任务信息确定）。网络坏了才用 `vmrun runScriptInGuest` 救急（配方见 references/vmrun.md）。
 
-## 克隆机网络不通（历史大坑）
+## 克隆机网络不通
 
 **症状**：克隆机首开机 ens33 DOWN、拿不到 DHCP、ssh 不通。
 
@@ -38,6 +38,13 @@ SSH 免密（宿主机密钥已入 authorized_keys，地址按任务信息确定
 3. machine-id / host key 是否独立（`cat /etc/machine-id` 与母机不同）；
 4. 主机名与母机不同（母机模板 hostname 固定，克隆后手动改）。需要改名时：`echo <pw> | sudo -S hostnamectl set-hostname <新名>`（密码向用户索取）。
 
+## 快照回滚后网卡改名/断网
+
+- 与上文「克隆机网络不通」区分：那是母机 MAC 绑死致配置不匹配（改按接口名）；这里是回滚后接口改名、要钉回原名（按 MAC 匹配）。
+- `revertToSnapshot` 连带回滚 vmx 设备配置与 PCI slot：换过网卡的机器回滚后接口改名（如 ens33→ens160），旧按名 netplan 配置失效断网；钉 PCI slot 实测无效。
+- 修复：netplan 用 `match macaddress + set-name` 钉名。MAC 以 guest 内 `ip link` 实测为准，勿抄 vmx 里的生成地址；旧的按接口名定义文件删掉（同名双 match 冲突，全失效）；通配 `match "ens*"` 有启动时序竞态会断网，勿用。
+- 修复后先冷启动复验，再重拍快照固化；否则下次回滚又复活断网态。
+
 ## 切换静态 IP
 
 - 静态 IP 取 NAT 网段低段，避让 DHCP 池（VMnet8 默认 `.128–.254`）。
@@ -55,13 +62,14 @@ SSH 免密（宿主机密钥已入 authorized_keys，地址按任务信息确定
 ## systemd 与服务判断
 
 - openssh-server 新版本改用 **ssh.socket 激活**：`systemctl is-active ssh` 显示 inactive 属**正常**，22 端口由 ssh.socket 监听、连接时按需拉起 sshd，勿误判为故障。验证用 `ss -tlnp | grep :22` 或直接 ssh 连一下。
-- `/tmp` 是 tmpfs：客户机重启后 `/tmp` 下脚本全丢，vmrun 流程每次先上传再执行。
+
 
 ## 远程命令细节
 
 - `sshpass` + Git Bash ssh 传密码会报 `Failed password`（密码正确也失败）：自动化一律用密钥或 vmrun 通道，不走 sshpass。
 - `pkill -f` 在 ssh 远程命令里会误杀自身 shell（命令行含同样字符串）：改用 `pkill -x`。
 - `echo <pw> | sudo -S` 与传脚本（heredoc/`bash -s`）不能共用 stdin：先上传脚本文件，再 `echo <pw> | sudo -S bash /tmp/x.sh`。
+- 宿主机（Windows）写脚本下发 Linux guest 必须 LF 行尾：CRLF 经 ssh stdin 执行报 bash 语法错。写脚本时就以 LF 保存，勿靠传输转码。
 
 ## 常驻 daemon 与进程管理（SSH 远程后台）
 

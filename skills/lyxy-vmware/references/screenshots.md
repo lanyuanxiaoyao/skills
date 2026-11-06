@@ -22,7 +22,7 @@ MSYS_NO_PATHCONV=1 "$VMRUN" \
 
 要点：
 - **输出路径是宿主机侧路径**，不是 guest 路径；PNG 生成后 Agent 可直接 Read 读图。
-- 必须带 `-gu/-gp` 客户机凭据，否则报"匿名客户机操作"错误（个别 Windows VM 不带也能截，但一律带上最稳）。
+- 必须带 `-gu/-gp` 客户机凭据，否则报"匿名客户机操作"错误（个别 Windows VM 不带也能截，一律带上）。
 
 ### 封装函数（粘贴进 Git Bash 会话即用，自动定位 vmrun）
 
