@@ -1,6 +1,5 @@
 # Windows 客户机经验
 
-> 单源是 SKILL.md，本文与其不一致时以 SKILL.md 为准。来源：Windows 10/11 x64 虚拟机实证。
 
 ## 前置
 

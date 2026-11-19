@@ -3,7 +3,7 @@ name: lyxy-vmware
 description: 操作 VMware Workstation 虚拟机的标准作业规则：动手前先认机（vmx/IP/凭据/快照名从任务信息或用户处获取），再按通道选择表选 SSH/vmrun/captureScreen/VNC 通道操作，核心坑是 Git Bash 必须 MSYS_NO_PATHCONV=1、vmrun 用全路径且参数位置有讲究、guest 内输出不回显要落盘拉回；禁止写死 IP、禁止凭据落盘；凡是"操作 VMware""连虚拟机""vmrun""虚拟机截图""克隆虚拟机""快照回滚""在虚拟机里执行命令""虚拟机 GUI 自动化验证"这类需求，都按本规则执行。
 metadata:
   author: lanyuanxiaoyao
-  version: 1.6.0
+  version: 1.7.0
 ---
 
 # 操作 VMware Workstation 虚拟机
@@ -71,15 +71,9 @@ metadata:
 | macOS 黑苹果客户机（OC4VM、TCC、vncdotool） | references/macos-guest.md |
 | Windows 客户机（bat 包装、-noWait、click.ps1） | references/windows-guest.md |
 
-## 自维护：踩坑沉淀
-
-- **通用坑**（所有 VM 或某 OS 都会遇到）→ 更新本 skill 对应 reference；本 skill 的坑清单就是通用坑的家。
-- **机器特有事实**（IP 变了、新快照名、新装软件、机器怪癖）→ 登记到该机器的信息记录里（环境有记录机制就用，没有就报告用户留存），下次直接查，不靠回忆。
-- 只记一边，下次必踩。跨主机通用的知识直接写；单机实测的数值标注"本机实测"。
-
 ## Workflow
 
 1. 定位 `$VMRUN` → `vmrun list` 看在跑哪台 → 按任务信息认机，拿 vmx / IP / 凭据 / 快照名。
 2. 按通道选择表定方案，Read 对应 reference 拿命令配方。
 3. 执行任务；guest 内命令输出一律落盘后拉回，不依赖回显。
-4. 任务结束：临时克隆机的删除与移除交用户手动处理（可提醒：GUI 右键移除库条目 + 删除磁盘目录）；按「自维护」规则沉淀本次新经验。
+4. 任务结束：临时克隆机的删除与移除交用户手动处理（可提醒：GUI 右键移除库条目 + 删除磁盘目录）。

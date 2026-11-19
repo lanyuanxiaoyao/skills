@@ -1,7 +1,5 @@
 # Ubuntu 客户机经验
 
-> 单源是 SKILL.md，本文与其不一致时以 SKILL.md 为准。来源：Ubuntu Server/Desktop 母机与多台克隆机的实证记录。
-
 ## 首要通道
 
 SSH 免密（宿主机密钥已入 authorized_keys，地址按任务信息确定）。网络坏了才用 `vmrun runScriptInGuest` 救急（配方见 references/vmrun.md）。
